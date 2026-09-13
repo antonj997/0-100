@@ -23,6 +23,7 @@ Independent cases cover hand-calculated Classic totals and standings, shared win
 
 ## Remaining validation
 
-Browser interaction and visual testing have not completed because the preview could not be reached. GitHub repository creation and Pages deployment have not completed because secure GitHub authentication was not completed. The included workflow is prepared but has not run on GitHub.
+Browser interaction and visual testing have not completed because the preview could not be reached. The code is now published in the public repository antonj997/0-100. GitHub Actions run 34761322275 passed all 14 tests on 2026-09-13, then stopped at configure-pages because Pages is not enabled. Enable Settings → Pages → Source → GitHub Actions and rerun the workflow. Live-browser validation remains pending deployment.
 
 This report distinguishes source review and rule tests from real-browser verification; the latter remains a release check.
+
