@@ -4,7 +4,7 @@ A quiet digital version of the supplied paper scorecard. Swedish is the first-ru
 
 The sheet uses numbered rows, three answer/score columns, dotted dividers, alternating pale-red bands, seven-question subtotals, and a boxed total. Select a player to see their sheet; all players’ current totals remain visible above the entry form.
 
-Colors: background #f3e4e0, paper #fff9f3, red #883b44, ink #462b2e, muted #76565a, stripe #f7dfda, band #edc5c2, line #c49d9b. Georgia headings recall printed stationery; plain sans-serif controls and tabular numerals keep entry readable. Two columns above 720px, one column below.
+Colors: background #f3e4e0, paper #fff9f3, red #883b44, ink #462b2e, muted #76565a, stripe #f7dfda, band #edc5c2, line #c49d9b. Georgia page, scorecard, and winner headings recall printed stationery; plain sans-serif controls and tabular numerals keep entry readable. The game layout uses two columns above 720px and one column at or below 720px.
 
 One authored animation: a brief red/gold confetti fall when the final question is submitted. Reduced-motion users receive the same static winner result without confetti. Ties name all winners.
 

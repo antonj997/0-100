@@ -35,3 +35,13 @@ A visual check at a 500px browser width found no page-level horizontal overflow.
 - All 14 tests passed in GitHub before the successful deployment on 2026-09-13.
 
 This subsequent report-only update does not change the deployed application.
+
+## Scorecard redesign review — 2026-09-21
+
+An independent reviewer checked the simplified scorecard design implementation, bilingual state handling, input escaping, old-save compatibility, reader rotation and reduced-motion behavior. No source-level blockers were found. Accessible dialog and language-navigation labels were improved after review.
+
+The reviewer added a full 14-question regression scenario, including the reader transition after question seven, independently calculated totals, a winner-changing correction, completion guard and save restoration. All 18 tests pass locally.
+
+The first live deployment exposed mixed cached assets (new HTML with an old app script). Versioned asset URLs address this returning-browser failure.
+
+Live browser verification passed: Swedish first run, 2 players → 14 questions, language switching retained a typed answer, reader changed from Anna to Bo after question seven, reload retained −70/+70 totals, completion showed Anna at −140 and 48 animated confetti pieces, and correcting question one recalculated totals to −120/+120. Canonical Pages URL was reloaded successfully after the cache fix. Desktop scorecard visually inspected. Responsive CSS is implemented; a separate mobile viewport was not available in this browser session.
