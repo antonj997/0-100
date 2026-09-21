@@ -6,6 +6,6 @@ The sheet uses numbered rows, three answer/score columns, dotted dividers, alter
 
 Colors: background #f3e4e0, paper #fff9f3, red #883b44, ink #462b2e, muted #76565a, stripe #f7dfda, band #edc5c2, line #c49d9b. Georgia page, scorecard, and winner headings recall printed stationery; plain sans-serif controls and tabular numerals keep entry readable. The game layout uses two columns above 720px and one column at or below 720px.
 
-One authored animation: a brief red/gold confetti fall when the final question is submitted. Reduced-motion users receive the same static winner result without confetti. Ties name all winners.
+One authored animation: five staggered red/gold paper-confetti bursts using locally hosted canvas-confetti 1.9.4, with randomized particle velocity, tilt, wobble and gravity when the final question is submitted. Reduced-motion users receive the same static winner result without confetti. Ties name all winners.
 
 One-card-per-player mode uses seven questions per player, with readers assigned in player order; everyone still answers. Old 7/21-question saves remain compatible.
