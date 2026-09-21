@@ -1,4 +1,4 @@
-import {number,score,createGame,saveRound,totals,ranking,restore,reader} from './scoring.js';
+import {number,score,createGame,saveRound,totals,ranking,restore,reader} from './scoring.js?v=2';
 const $=s=>document.querySelector(s), app=$('#app'), key='zero-100-game-v1';
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const copy={
