@@ -38,3 +38,9 @@ Create a public repository, push to main, then select **Settings → Pages → S
 ## Validation
 
 14 automated tests pass, including five independently designed reviewer regressions. Two review cycles resolved two findings. See [REVIEW.md](REVIEW.md) for evidence and the remaining browser/deployment checks.
+
+## Scorecard redesign
+
+Swedish is the default language; SV / EN switches language and remembers the choice. Warm off-white paper and pastel red rows follow the physical scorecard. Use the player selector to inspect each full scorecard; click a completed question number to correct it.
+
+Choose **Ett kort per spelare / One card per player** for seven questions per player. Readers rotate after each card in player order, so four players play 28 questions. Everyone answers, including the reader. Classic 21-question and short 7-question modes remain available. Finishing celebrates the lowest-scoring player (or tied players), with reduced-motion support.

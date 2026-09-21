@@ -27,6 +27,7 @@ export function createGame(names, limit=21) {
   const players=names.map(n=>n.trim());
   if(players.length<2 || players.some(n=>!n || n.length>40)) throw new Error('Add at least two players. Names must be 1–40 characters.');
   if(new Set(players.map(n=>n.toLocaleLowerCase())).size!==players.length) throw new Error('Give each player a different name.');
+  if(limit==='players') return {version:1,players,mode:'players',limit:players.length*7,rounds:[]};
   if(![7,21].includes(limit)) throw new Error('Choose 7 or 21 questions.');
   return {version:1,players,limit,rounds:[]};
 }
@@ -40,5 +41,7 @@ export function totals(game, start=0, end=game.rounds.length) { return game.play
 export function ranking(game) {const t=totals(game); return game.players.map((name,i)=>({name,index:i,total:t[i],rank:1+t.filter(v=>v<t[i]).length})).sort((a,b)=>a.total-b.total||a.index-b.index);}
 export function restore(value) {
   const raw=JSON.parse(value); if(raw.version!==1 || !Array.isArray(raw.players)||!Array.isArray(raw.rounds)) throw new Error('Invalid saved game');
-  let game=createGame(raw.players,raw.limit); for(const r of raw.rounds) game=saveRound(game,r.guesses,r.answer); return game;
+  let game=createGame(raw.players,raw.mode==='players'?'players':raw.limit); if(game.limit!==raw.limit) throw new Error('Invalid saved game'); for(const r of raw.rounds) game=saveRound(game,r.guesses,r.answer); return game;
 }
+
+export function reader(game,index=game.rounds.length) { return game.mode==='players' && Number.isInteger(index) && index>=0 && index<game.limit ? game.players[Math.floor(index/7)] : null; }
