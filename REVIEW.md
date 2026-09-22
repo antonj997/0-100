@@ -53,3 +53,9 @@ Replaced the synchronized CSS fall with the official, locally hosted canvas-conf
 Independent visual review: **SHIP, round 1 of maximum 3**. The reviewer played a seven-question game on the deployed site and inspected eight temporal captures from 0.12 to 4.235 seconds after Finish, as well as launch captures. Feedback: staggered left/right sprays expand upward and inward, overlap at varied heights, then fall unevenly; broad and edge-on shapes give convincing tumbling paper. No synchronized horizontal curtain; winner and controls remain readable. No changes requested. Temporal screenshots establish changing trajectories and orientations, not video frame-rate smoothness.
 
 Added a matching two-card app icon with a gold sparkle, an SVG favicon, PNG home-screen icons and a web manifest. This adds home-screen presentation, not offline caching.
+
+## Compact keyboard entry — 2026-09-22
+
+Removed the reveal phase: correct answer from the physical card is always visible. Enter advances through validated guesses, then saves from the correct-answer field and focuses the next question. Decimal inputs accept comma separators. Inline Next buttons provide a fallback for numeric keyboards without a return key. Header, score summary and mobile entry spacing are reduced; 44px controls and 16px answer text are preserved.
+
+Live Chrome UI verification: Enter advanced Anna → Bo; inline Next advanced Bo → correct answer; final Enter saved −10 / 9.5 for guesses 20.5 / 30 and answer 20.5, then focused the first player of question two. Enter on 101 stayed in the invalid field and showed the translated range error. Switching language preserved the typed draft. All 18 scoring tests and JavaScript syntax checks passed; Pages deployment succeeded. Native iPhone keyboard behavior was not device-tested.
