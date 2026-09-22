@@ -10,4 +10,4 @@ One authored animation: five staggered red/gold paper-confetti bursts using loca
 
 One-card-per-player mode uses seven questions per player, with readers assigned in player order; everyone still answers. Old 7/21-question saves remain compatible.
 
-Entry refinement: one always-visible form for player guesses and the physical card’s correct answer. Enter/Next advances through valid guesses; Done on the answer saves and focuses the next question. An inline Next button appears beside the focused player field for keyboards without a return action. Decimal text inputs accept Swedish commas and keep 16px text; interactive controls remain at least 44px high. The header and mobile entry spacing are compact.
+Entry refinement: one always-visible form for player guesses and the physical card’s correct answer. Enter/Next advances through valid guesses; Done on the answer saves and focuses the next question. There are no inline Next buttons; keyboard navigation remains available. Decimal text inputs accept Swedish commas and keep 16px text; interactive controls remain at least 44px high. The header and mobile entry spacing are compact.
