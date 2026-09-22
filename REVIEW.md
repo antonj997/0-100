@@ -45,3 +45,11 @@ The reviewer added a full 14-question regression scenario, including the reader 
 The first live deployment exposed mixed cached assets (new HTML with an old app script). Versioned asset URLs address this returning-browser failure.
 
 Live browser verification passed: Swedish first run, 2 players → 14 questions, language switching retained a typed answer, reader changed from Anna to Bo after question seven, reload retained −70/+70 totals, completion showed Anna at −140 and 48 animated confetti pieces, and correcting question one recalculated totals to −120/+120. Canonical Pages URL was reloaded successfully after the cache fix. Desktop scorecard visually inspected. Responsive CSS is implemented; a separate mobile viewport was not available in this browser session.
+
+## Confetti replacement — 2026-09-22
+
+Replaced the synchronized CSS fall with the official, locally hosted canvas-confetti 1.9.4 module. Five staggered launches use randomized particle speed, direction, wobble and tilt. Animation stops when the document is hidden or a new game starts, and respects reduced motion. All 18 scoring tests and JavaScript syntax checks passed before deployment.
+
+Independent visual review: **SHIP, round 1 of maximum 3**. The reviewer played a seven-question game on the deployed site and inspected eight temporal captures from 0.12 to 4.235 seconds after Finish, as well as launch captures. Feedback: staggered left/right sprays expand upward and inward, overlap at varied heights, then fall unevenly; broad and edge-on shapes give convincing tumbling paper. No synchronized horizontal curtain; winner and controls remain readable. No changes requested. Temporal screenshots establish changing trajectories and orientations, not video frame-rate smoothness.
+
+Added a matching two-card app icon with a gold sparkle, an SVG favicon, PNG home-screen icons and a web manifest. This adds home-screen presentation, not offline caching.
