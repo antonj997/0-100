@@ -12,4 +12,6 @@ The room row is versioned. Every write uses compare-and-swap and retries with fr
 
 Rooms expire after 24 hours; expired records are removed when new rooms are created. Data includes player nicknames and answers only. Tokens stay on the device and are sent only to the API.
 
-Deployment requires a selected Supabase project, the SQL setup, deployed edge function, and the function URL in public/online-config.js. Only after live multi-device verification will the Pages entry point switch from the current app to the shared app. Source preparation does not imply the server is already live.
+Deployed to the dedicated Supabase project `vpatfbtblletjedqrebk`, Edge Function `zero100`. Both `index.html` and `multiplayer.html` load the shared app; `local.html` retains the single-phone scorekeeper.
+
+Live browser checks completed a seven-question game using two independently authenticated player sessions. Verified private guesses, disabled answer input until everyone submits, simultaneous submissions, synchronized results, exact-answer scoring, reconnect after reload, accumulated scores and winner celebration. Reader rotation and complete player-card games are covered by automated tests.

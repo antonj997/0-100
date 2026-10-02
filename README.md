@@ -2,7 +2,7 @@
 
 A mobile-friendly, dependency-free scorekeeper for the physical 0–100 trivia card game. Add players or teams, enter guesses, reveal the answer, and let the app keep score.
 
-## Features
+## Single-phone features (local.html)
 
 - Named players or teams, with duplicate-name validation.
 - Classic (21 questions) and Mini (7 questions).
@@ -45,9 +45,9 @@ Swedish is the default language; SV / EN switches language and remembers the cho
 
 Choose **Ett kort per spelare / One card per player** for seven questions per player. Readers rotate after each card in player order, so four players play 28 questions. Everyone answers, including the reader. Classic 21-question and short 7-question modes remain available. Finishing celebrates the lowest-scoring player (or tied players), with reduced-motion support.
 
-## Multiplayer implementation (prepared)
+## Multiplayer
 
-The multiplayer entry is `public/multiplayer.html`. It is not the deployed entry point until a server is configured. See `docs/MULTIPLAYER.md` for behavior and deployment requirements.
+The shared game is the deployed default at `public/index.html`, also available as `public/multiplayer.html`. Players join by code, submit private answers, and receive synchronized scores after the reader enters the correct answer. See `docs/MULTIPLAYER.md` for behavior and deployment requirements.
 
 Backend sources:
 - `server/setup.sql`: dedicated room table, RLS, browser-role revocations.
@@ -57,4 +57,4 @@ Backend sources:
 
 Set `public/online-config.js` to the deployed function URL. Deploy the function with `server/index.ts`, `server/api.js`, `server/game.js`, and `public/scoring.js`, preserving paths. It uses custom cryptographic room-session tokens, so `verify_jwt` must be false; service keys remain only in Supabase’s function environment. Apply the SQL only to the selected project. Verify two independent device sessions, hidden guesses, early-answer rejection, results, reconnect and reader rotation before replacing the production index with multiplayer.html.
 
-Run `node --test --test-isolation=none --test-reporter=spec tests/*.test.js` for all scoring and multiplayer tests. API tests use an in-memory versioned store; actual database/CORS/function deployment remains a separate integration check.
+Run `node --test --test-isolation=none --test-reporter=spec tests/*.test.js` for all scoring and multiplayer tests. API tests use an in-memory versioned store; live browser integration also passed against the deployed database and function; see `docs/MULTIPLAYER-REVIEW.md`.
