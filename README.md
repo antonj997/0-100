@@ -44,3 +44,17 @@ Create a public repository, push to main, then select **Settings → Pages → S
 Swedish is the default language; SV / EN switches language and remembers the choice. Warm off-white paper and pastel red rows follow the physical scorecard. Use the player selector to inspect each full scorecard; click a completed question number to correct it.
 
 Choose **Ett kort per spelare / One card per player** for seven questions per player. Readers rotate after each card in player order, so four players play 28 questions. Everyone answers, including the reader. Classic 21-question and short 7-question modes remain available. Finishing celebrates the lowest-scoring player (or tied players), with reduced-motion support.
+
+## Multiplayer implementation (prepared)
+
+The multiplayer entry is `public/multiplayer.html`. It is not the deployed entry point until a server is configured. See `docs/MULTIPLAYER.md` for behavior and deployment requirements.
+
+Backend sources:
+- `server/setup.sql`: dedicated room table, RLS, browser-role revocations.
+- `server/game.js`: authoritative room transitions and sanitized snapshots.
+- `server/api.js`: session capability verification, input validation and conflict retries.
+- `server/index.ts`: Supabase Edge Function adapter and versioned REST writes.
+
+Set `public/online-config.js` to the deployed function URL. Deploy the function with `server/index.ts`, `server/api.js`, `server/game.js`, and `public/scoring.js`, preserving paths. It uses custom cryptographic room-session tokens, so `verify_jwt` must be false; service keys remain only in Supabase’s function environment. Apply the SQL only to the selected project. Verify two independent device sessions, hidden guesses, early-answer rejection, results, reconnect and reader rotation before replacing the production index with multiplayer.html.
+
+Run `node --test --test-isolation=none --test-reporter=spec tests/*.test.js` for all scoring and multiplayer tests. API tests use an in-memory versioned store; actual database/CORS/function deployment remains a separate integration check.
