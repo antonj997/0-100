@@ -1,2 +1,1 @@
-// Set when the selected Supabase project has been deployed and verified.
-export const endpoint = '';
+export const endpoint = 'https://vpatfbtblletjedqrebk.supabase.co/functions/v1/zero100';
