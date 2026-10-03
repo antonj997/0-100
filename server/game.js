@@ -5,7 +5,7 @@ function guess(value){try{return number(value);}catch{fail('INVALID_NUMBER');}}
 function member(state,hash){const p=state.players.find(p=>p.tokenHash===hash);if(!p)fail('SESSION_INVALID');return p;}
 function readerId(state,round=state.round){return state.players[Math.floor(round/7)%state.players.length].id;}
 export function createRoom(playerName,hash,mode){
- if(!['7','21','players'].includes(mode))fail('INVALID_MODE');
+ if(!['7','21','players'].includes(mode)&&!(typeof mode==='string'&&/^cards:(?:[1-9]|10)$/.test(mode)))fail('INVALID_MODE');
  if(!/^[a-f0-9]{64}$/.test(hash))fail('SESSION_INVALID');
  const p={id:hash.slice(0,24),name:name(playerName),tokenHash:hash};
  return {version:1,players:[p],hostId:p.id,mode,limit:null,stage:'lobby',round:0,guesses:{},rounds:[]};
@@ -25,7 +25,7 @@ export function transition(state,hash,action,payload){
   if(me.id!==s.hostId)fail('HOST_ONLY');if(s.stage!=='lobby')fail('GAME_STARTED');
   if(action==='remove'){if(payload.playerId===s.hostId)fail('HOST_ONLY');s.players=s.players.filter(p=>p.id!==payload.playerId);return s;}
   if(s.players.length<2)fail('NEED_PLAYERS');
-  s.limit=s.mode==='players'?s.players.length*7:Number(s.mode);s.stage='question';return s;
+  s.limit=s.mode==='players'?Math.min(s.players.length,10)*7:s.mode.startsWith('cards:')?Number(s.mode.slice(6))*7:Number(s.mode);s.stage='question';return s;
  }
  if(!Number.isInteger(payload.round)||payload.round!==s.round)fail('STALE_QUESTION');
  if(action==='guess'){

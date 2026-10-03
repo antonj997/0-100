@@ -4,7 +4,7 @@ Players create or join a room using an eight-character code. The creator partici
 
 All players, including the reader, submit their own guess. Current guesses remain private until scoring. The reader can enter the physical card’s correct answer only after all players have submitted. The server rejects early scoring and operations from anyone other than the reader. Results show guesses, differences (−10 for an exact answer), and accumulated totals on every phone. The reader advances to the next question.
 
-Reader order follows player order, changing after seven questions. Game lengths remain 7, 21, or seven questions per player. A lobby host can remove a player before starting. After starting, the roster is fixed. A player can reconnect in the same browser using the stored session. Players cannot be silently skipped; their answer is required.
+Reader order follows player order, changing after seven questions. Choose 1–10 cards (7–70 questions), or one card per player capped at 10 cards. Existing 7/21-question rooms remain compatible. A lobby host can remove a player before starting. After starting, the roster is fixed. A player can reconnect in the same browser using the stored session. Players cannot be silently skipped; their answer is required.
 
 GitHub Pages serves the static UI. A Supabase Edge Function owns access to a dedicated room table. Each device receives a cryptographically random capability token; only its SHA-256 hash is stored. The server returns sanitized snapshots, never other players’ tokens or unrevealed guesses. No account or login is required.
 

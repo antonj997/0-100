@@ -36,3 +36,23 @@ test('submitted answer locks; invalid range and malformed values rejected',()=>{
 test('snapshot has no hidden tokens or unanswered peer guesses for any member',()=>{
  let s=ready();s=transition(s,B,'guess',{round:0,value:83});const view=snapshot(s,A);assert.equal(view.myGuess,null);assert.equal(view.rounds.length,0);assert.equal(view.players[1].answered,true);assert.ok(!JSON.stringify(view).includes('83'));assert.ok(!JSON.stringify(view).includes(B));assert.throws(()=>snapshot(s,C),/SESSION_INVALID/);
 });
+
+ test('custom cards accept 1–10 only and set seven questions per card',()=>{
+  for(let cards=1;cards<=10;cards++)assert.equal(ready(`cards:${cards}`).limit,cards*7);
+  for(const mode of ['cards:0','cards:11','cards:1.5','cards:01','cards:-1','cards:','cards:100',null,10])assert.throws(()=>createRoom('Anna',A,mode),/INVALID_MODE/);
+ });
+ test('ten cards rotate readers and finish exactly after 70 questions',()=>{
+  let s=ready('cards:10');
+  for(let q=0;q<70;q++){
+   const reader=Math.floor(q/7)%2===0?A:B;
+   assert.equal(snapshot(s,A).readerId,s.players[Math.floor(q/7)%2].id);
+   s=transition(s,A,'guess',{round:q,value:10});s=transition(s,B,'guess',{round:q,value:20});
+   s=transition(s,reader,'reveal',{round:q,value:10});assert.equal(s.stage,q===69?'finished':'results');
+   if(q<69)s=transition(s,reader,'next',{round:q});
+  }
+  assert.deepEqual(snapshot(s,A).totals,[-700,700]);
+ });
+ test('automatic card count is capped at ten for twelve players',()=>{
+  let s=createRoom('Anna',A,'players');for(let i=1;i<12;i++)s=joinRoom(s,`Player ${i}`,i.toString(16).padStart(64,'0'));
+  assert.equal(transition(s,A,'start',{}).limit,70);
+ });
