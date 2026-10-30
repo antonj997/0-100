@@ -15,7 +15,7 @@ function decimalParts(value) {
     ? { coefficient: coefficient * 10n ** BigInt(-scale), scale: 0 }
     : { coefficient, scale };
 }
-function decimalSum(values) {
+export function decimalSum(values) {
   const parts = values.map(decimalParts);
   const scale = Math.max(0, ...parts.map(p => p.scale));
   const coefficient = parts.reduce((sum, p) => sum + p.coefficient * 10n ** BigInt(scale - p.scale), 0n);
@@ -45,3 +45,4 @@ export function restore(value) {
 }
 
 export function reader(game,index=game.rounds.length) { return game.mode==='players' && Number.isInteger(index) && index>=0 && index<game.limit ? game.players[Math.floor(index/7)] : null; }
+

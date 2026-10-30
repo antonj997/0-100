@@ -17,7 +17,7 @@ test('all online text keys and backend error codes have both translations',()=>{
  const view=ui();assert.equal(view.run('JSON.stringify(Object.keys(words.sv).sort())'),view.run('JSON.stringify(Object.keys(words.en).sort())'));
  assert.equal(view.run('Object.values(words).every(dict=>Object.values(dict).every(value=>typeof value===\'string\'&&value.length>0))'),true);
  const sources=['../server/api.js','../server/game.js'].map(p=>readFileSync(new URL(p,import.meta.url),'utf8')).join('\n');
- const codes=[...new Set([...sources.matchAll(/'([A-Z]+(?:_[A-Z]+)+|BUSY)'/g)].map(m=>m[1]))];
+ const codes=[...new Set([...sources.matchAll(/["']([A-Z]+(?:_[A-Z]+)+|BUSY)["']/g)].map(m=>m[1]))];
  for(const code of codes)assert.equal(view.run(`errors[${JSON.stringify(code)}]?.every(text=>typeof text==='string'&&text.length>0)`),true,code);
 });
 test('English card counts use singular and plural and every error changes language',()=>{
@@ -27,3 +27,4 @@ test('English card counts use singular and plural and every error changes langua
   view.node('#sv').onclick();assert.ok(view.node('#app').innerHTML.includes(view.run(`esc(errors[${JSON.stringify(code)}][0])`)));view.node('#en').onclick();
  }
 });
+
