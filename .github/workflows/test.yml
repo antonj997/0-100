@@ -1,14 +1,17 @@
 name: Feature branch tests
 on:
   pull_request:
-  push:
-    branches: ['feature/**']
+  workflow_dispatch:
+concurrency:
+  group: feature-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         node: ['22', '24']
     steps:

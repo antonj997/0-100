@@ -24,3 +24,10 @@ Run `node scripts/preview.mjs` and open http://127.0.0.1:4173 in separate browse
 
 ## Validation
 41 automated assertions/tests initially passed, including a full 70-question game, private snapshots, concurrent writes, expiry filters, host transfer, removed-reader fallback, early winners and decimal ties. Real Chromium exercised create/join/edit/lock/reveal/private result/advance/finish with mobile and desktop captures. A fresh reviewer identified the decimal-tie and restored-input issues; both received failing regression tests and fixes.
+
+## Simpler scorecard and management update
+The playing surface is a seven-row scorecard. The current question is highlighted, guesses and the reader's correct answer are entered directly in their cells, and Summa shows the player's cumulative scored total. Between cards the default view is a compact total ranking; completed-card history expands into each player's full scorecard.
+
+Manage game contains member removal, total card count, early finish, sharing and leave. Only the host can change card count (1–10, never below the started card); completed history is preserved. Finishing the already completed final card after shortening the game is allowed.
+
+Validation after this update: 46 automated tests plus Chromium mobile/desktop flow including in-game card-count editing and a full seven-question card. Review caught and fixed lobby card-count display. CI now runs on pull requests/manual dispatch only, with independent Node 22/24 results and cancellation of superseded runs. Uploads use one atomic tree/commit/ref update, avoiding the earlier intermediate incomplete commits that generated failure emails.

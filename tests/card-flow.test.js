@@ -106,3 +106,40 @@ test("decimal totals tie regardless of answer ordering", () => {
   assert.equal(view.myTotal, 0.6);
   assert.equal(view.winnerIds.length, 2);
 });
+test("host changes total cards without discarding current card or scored history", () => {
+  let s = start();
+  assert.throws(
+    () => transition(s, B, "cards", { cards: 3 }, 1000),
+    /HOST_ONLY/,
+  );
+  for (const cards of [0, 11, 1.5, "3"])
+    assert.throws(
+      () => transition(s, A, "cards", { cards }, 1000),
+      /INVALID_MODE/,
+    );
+  s = transition(s, A, "cards", { cards: 3 }, 1000);
+  assert.equal(s.limit, 21);
+  s = score(s);
+  const saved = JSON.stringify(s.rounds);
+  s = transition(s, A, "cards", { cards: 1 }, 1001);
+  assert.equal(s.limit, 7);
+  assert.equal(JSON.stringify(s.rounds), saved);
+  s.round = 7;
+  s.stage = "question";
+  assert.throws(
+    () => transition(s, A, "cards", { cards: 1 }, 1002),
+    /INVALID_MODE/,
+  );
+});
+test("published player scorecards contain guesses, correct answers and points only after a whole card", () => {
+  let s = score(start());
+  assert.deepEqual(snapshot(s, A, 1001).ranking, []);
+  s = transition(s, A, "finish", {}, 1002);
+  const view = snapshot(s, A, 1002);
+  assert.deepEqual(view.ranking.find((p) => p.name === "Bo").scores[0], {
+    question: 1,
+    guess: 20,
+    answer: 10,
+    points: 10,
+  });
+});

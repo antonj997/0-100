@@ -140,6 +140,25 @@ export function transition(
     s.guesses = {};
     return s;
   }
+  if (action === "cards") {
+    if (me.id !== s.hostId) fail("HOST_ONLY");
+    if (s.stage === "finished") fail("GAME_FINISHED");
+    const cards = payload.cards;
+    if (
+      !Number.isInteger(cards) ||
+      cards < 1 ||
+      cards > 10 ||
+      (s.stage !== "lobby" && cards < Math.floor(s.round / 7) + 1)
+    )
+      fail("INVALID_MODE");
+    s.mode = `cards:${cards}`;
+    if (s.stage !== "lobby") {
+      s.limit = cards * 7;
+      if (s.stage === "card" && s.rounds.length >= s.limit)
+        s.stage = "finished";
+    }
+    return s;
+  }
   if (action === "start") {
     if (me.id !== s.hostId) fail("HOST_ONLY");
     if (s.stage !== "lobby") fail("GAME_STARTED");
@@ -220,12 +239,10 @@ export function snapshot(state, hash, now = Date.now()) {
     visibleCount = finished
       ? s.rounds.length
       : Math.floor(s.rounds.length / 7) * 7;
-  const published = s.rounds
-    .slice(0, visibleCount)
-    .map((r) => ({
-      ...r,
-      points: r.guesses.map((g) => (g == null ? null : score(g, r.answer))),
-    }));
+  const published = s.rounds.slice(0, visibleCount).map((r) => ({
+    ...r,
+    points: r.guesses.map((g) => (g == null ? null : score(g, r.answer))),
+  }));
   const ranking = s.players
     .map((p, i) => ({
       id: p.id,
@@ -233,6 +250,12 @@ export function snapshot(state, hash, now = Date.now()) {
       active: p.active !== false,
       total: decimalSum(published.map((r) => r.points[i] ?? 0)),
       points: published.map((r) => r.points[i]),
+      scores: published.map((r, q) => ({
+        question: q + 1,
+        guess: r.guesses[i] ?? null,
+        answer: r.answer,
+        points: r.points[i] ?? null,
+      })),
     }))
     .sort((a, b) => a.total - b.total || a.name.localeCompare(b.name));
   const eligible = ranking.filter((p) => p.active),

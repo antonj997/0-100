@@ -1,3 +1,4 @@
+import { decimalSum } from "./scoring.js";
 import { endpoint } from "./online-config.js";
 import { celebrate, stopCelebration } from "./celebration.js?v=3";
 const $ = (s) => document.querySelector(s),
@@ -306,6 +307,29 @@ Object.assign(words.en, {
 });
 errors.NOT_LOCKED = ["Lås svaren först.", "Lock answers first."];
 
+Object.assign(words.sv, {
+  manage: "Hantera spel",
+  gameMenu: "Spelmeny",
+  saveCards: "Ändra antal kort",
+  cardsHint: "Påbörjade kort behålls. 1–10 kort totalt.",
+  archive: "Visa tidigare poängkort",
+  cardTotal: "Kortsumma",
+  sum: "Summa",
+  savedAnswer: "Svaret är sparat",
+  cardLabel: "Kort",
+});
+Object.assign(words.en, {
+  manage: "Manage game",
+  gameMenu: "Game menu",
+  saveCards: "Change card count",
+  cardsHint: "Started cards are kept. 1–10 cards in total.",
+  archive: "Show previous scorecards",
+  cardTotal: "Card subtotal",
+  sum: "Total",
+  savedAnswer: "Answer saved",
+  cardLabel: "Card",
+});
+let cardsDraft = "";
 const storageKey = "zero100-online-session";
 let lang = "sv",
   session = null,
@@ -475,11 +499,39 @@ function landing() {
   if ($("#resume")) $("#resume").onclick = () => refresh(true);
 }
 function gameTop() {
-  return `<div class="page-heading"><h1>${t("code")} <span class="room-code">${esc(room.code)}</span></h1><button id="leave">${t("leave")}</button></div><p id="online-connection" class="online-connection" role="status">${connectionLost ? t("offline") : ""}</p>${room.stage !== "lobby" ? `<div class="card-heading"><h2>${t("card").replace(/^./, (c) => c.toUpperCase())} ${room.card} ${t("of")} ${room.cardCount}</h2><p>${t("question")} ${(room.round % 7) + 1} ${t("of")} 7</p><div class="question-progress" aria-hidden="true">${Array.from({ length: 7 }, (_, i) => `<span class="${i <= room.round % 7 ? "done" : ""}"></span>`).join("")}</div></div>` : ""}`;
+  return `<div class="page-heading simple-heading"><h1>${room.stage === "lobby" ? `${t("code")} ${esc(room.code)}` : `${t("cardLabel")} ${room.card} ${t("of")} ${room.cardCount}`}</h1>${management()}</div><p id="online-connection" class="online-connection" role="status">${connectionLost ? t("offline") : ""}</p>`;
+}
+function management() {
+  const configuredCards =
+    room.cardCount ||
+    (room.mode === "players"
+      ? Math.min(10, Math.max(1, room.players.length))
+      : room.mode?.startsWith("cards:")
+        ? Number(room.mode.slice(6))
+        : Number(room.mode) / 7) ||
+    1;
+  const host = room.meId === room.hostId,
+    live = room.stage !== "finished";
+  return `<details id="manage-game" class="manage-game"><summary>${t(host ? "manage" : "gameMenu")}</summary><div class="manage-panel"><h2>${t("players")}</h2>${playerList(true)}${
+    host && live
+      ? `<form id="cards-form"><label for="card-count">${t("length")}</label><select id="card-count">${Array.from(
+          { length: 10 },
+          (_, i) => i + 1,
+        )
+          .filter((n) => room.stage === "lobby" || n >= room.card)
+          .map(
+            (n) =>
+              `<option value="${n}" ${Number(cardsDraft || configuredCards) === n ? "selected" : ""}>${n} ${t(n === 1 ? "singleCard" : "card")}</option>`,
+          )
+          .join(
+            "",
+          )}</select><p class="help">${t("cardsHint")}</p><button>${t("saveCards")}</button></form><button id="finish" class="text-button">${t("finish")}</button>`
+      : ""
+  }${room.stage !== "lobby" ? shareControls() : ""}<button id="leave" class="text-button">${t("leave")}</button></div></details>`;
 }
 
-function playerList() {
-  return `<ul class="online-players">${room.players.map((p) => `<li><span>${esc(p.name)}${p.id === room.meId ? " <small>(" + t("you") + ")</small>" : ""}</span><span data-status="${p.id}">${room.stage === "lobby" ? (p.id === room.hostId ? t("host") : "") : t(p.answered ? "ready" : "pending")}</span>${room.stage !== "finished" && room.meId === room.hostId && p.id !== room.hostId ? `<button data-remove="${p.id}" aria-label="${t("remove")} ${esc(p.name)}">${t("remove")}</button>` : ""}</li>`).join("")}</ul>`;
+function playerList(managing = false) {
+  return `<ul class="online-players">${room.players.map((p) => `<li><span>${esc(p.name)}${p.id === room.meId ? " <small>(" + t("you") + ")</small>" : ""}</span><span data-status="${p.id}">${room.stage === "lobby" ? (p.id === room.hostId ? t("host") : "") : t(p.answered ? "ready" : "pending")}</span>${managing && room.stage !== "finished" && room.meId === room.hostId && p.id !== room.hostId ? `<button data-remove="${p.id}" aria-label="${t("remove")} ${esc(p.name)}">${t("remove")}</button>` : ""}</li>`).join("")}</ul>`;
 }
 function lobby() {
   return `<section class="paper entry"><h2>${t("players")} <span class="muted">${room.players.length}/12</span></h2>${playerList()}${room.meId === room.hostId ? `<p class="help">${t("hostWait")}</p><button id="start" class="primary wide" ${room.players.length < 2 ? "disabled" : ""}>${t("start")}</button>` : `<p>${t("waiting")}</p>`}${shareControls()}</section>`;
@@ -487,43 +539,71 @@ function lobby() {
 function question() {
   const reader = room.players.find((p) => p.id === room.readerId),
     locked = room.stage === "locked";
-  return `<section class="paper entry"><p class="reader">${t("reads")}: <strong>${esc(reader?.name || "")}</strong></p><form id="guess-form"><label for="my-guess">${t("guess")} · 0–100</label><input id="my-guess" inputmode="decimal" autocomplete="off" required value="${esc(guessDraft || String(room.myGuess ?? ""))}" ${locked ? "disabled" : ""}><button class="primary" ${locked || busy ? "disabled" : ""}>${t(room.myGuess === null ? "submit" : "edit")}</button></form><p class="help">${t(locked ? "lockedRound" : "editable")}</p><p>${room.answered} / ${room.players.length} ${t("ready")}</p>${playerList()}${room.meId === room.readerId ? `${!locked ? `<button id="lock" class="primary wide" ${room.allAnswered && !busy ? "" : "disabled"}>${t("lock")}</button>` : ""}<form id="correct-form"><div class="answer-row"><label for="correct-answer">${t("answer")}</label><input id="correct-answer" inputmode="decimal" required value="${esc(correctDraft)}" ${locked ? "" : "disabled"}></div><p class="help">${t(locked ? "cardHint" : "lockFirst")}</p><button class="primary wide" ${locked && !busy ? "" : "disabled"}>${t("publish")}</button></form>` : ""}<p id="game-error" class="error" role="alert">${esc(notice ? errorText(notice) : "")}</p></section>`;
+  return `<section class="paper entry scorecard-entry"><p class="reader">${t("reads")}: <strong>${esc(reader?.name || "")}</strong> · ${room.answered}/${room.players.length} ${t("ready")}</p><form id="guess-form">${ownSheet()}${!locked ? `<button class="primary wide" ${busy ? "disabled" : ""}>${t(room.myGuess === null ? "submit" : "edit")}</button><p class="help">${t("editable")}</p>` : ""}</form>${room.meId === room.readerId ? (locked ? `<form id="correct-form"><button class="primary wide" ${busy ? "disabled" : ""}>${t("publish")}</button></form>` : `<button id="lock" class="primary wide" ${room.allAnswered && !busy ? "" : "disabled"}>${t("lock")}</button>`) : locked ? `<p class="help">${t("readerWait")}</p>` : ""}<p id="game-error" class="error" role="alert">${esc(notice ? errorText(notice) : "")}</p></section>`;
 }
 
 function results() {
   if (room.stage === "results" || room.stage === "waiting") {
-    const last = room.myRounds.at(-1);
-    return `<section class="paper entry personal-result"><h2>${t(room.stage === "waiting" ? "waitGroup" : "yourCard")}</h2><p class="help">${t("private")}</p>${room.stage === "results" ? `<p class="result-points">${fmt(last?.points ?? 0)} <small>${t("points")}</small></p><div class="answer-pair"><p>${t("ownAnswer")}<strong>${fmt(last?.guess ?? "—")}</strong></p><p>${t("answer")}<strong>${fmt(last?.answer ?? "—")}</strong></p></div>${ownSheet()}<button id="next-question" class="primary wide">${t("continue")}</button>` : ""}<p class="help" role="timer">${t("seconds")} <span id="countdown">${Math.max(0, Math.ceil((room.deadline - Date.now() - serverOffset) / 1000))}</span> s</p></section>`;
+    return `<section class="paper entry scorecard-entry"><p class="help">${t(room.stage === "waiting" ? "waitGroup" : "private")}</p>${ownSheet()}${room.stage === "results" ? `<button id="next-question" class="primary wide">${t("continue")}</button>` : ""}<p class="help" role="timer">${t("seconds")} <span id="countdown">${Math.max(0, Math.ceil((room.deadline - Date.now() - serverOffset) / 1000))}</span> s</p></section>`;
   }
+
   const done = room.stage === "finished",
     winners = room.players.filter((p) => room.winnerIds.includes(p.id));
   return `<section class="paper entry"><h2>${t(done ? "complete" : "cardDone")}</h2>${done ? `<div class="winner"><p>${t(winners.length > 1 ? "tie" : "winner")}</p><h2>${esc(winners.map((p) => p.name).join(" & ") || t("noWinner"))}</h2></div>` : ""}<h3>${t("standings")}</h3><p class="help">${t("lowest")} · ${t("totalScore")}</p>${rankings()}${!done && room.meId === room.hostId ? `<button id="next-question" class="primary wide">${t("nextCard")}</button>` : !done ? `<p>${t("waitNext")}</p>` : ""}<p id="game-error" class="error" role="alert">${esc(notice ? errorText(notice) : "")}</p></section>`;
 }
 function ownSheet() {
-  return `<table><thead><tr><th>${t("question")}</th><th>${t("guess")}</th><th>${t("answer")}</th><th>${t("points")}</th></tr></thead><tbody>${room.myRounds
-    .slice(Math.floor(room.round / 7) * 7)
-    .map(
-      (r) =>
-        `<tr><th>${r.question % 7 || 7}</th><td>${fmt(r.guess ?? "—")}</td><td>${fmt(r.answer)}</td><td>${fmt(r.points ?? "—")}</td></tr>`,
-    )
-    .join("")}</tbody></table>`;
+  const start = Math.floor(room.round / 7) * 7,
+    editable = room.stage === "question",
+    readerInput = room.stage === "locked" && room.meId === room.readerId;
+  return `<table class="live-scorecard"><caption>${t("yourCard")}</caption><thead><tr><th scope="col">№</th><th scope="col">${t("guess")}</th><th scope="col">${t("answer")}</th><th scope="col">${t("points")}</th></tr></thead><tbody>${Array.from(
+    { length: 7 },
+    (_, i) => {
+      const q = start + i,
+        r = room.myRounds[q],
+        current = q === room.round;
+      return `<tr class="${current ? "current-question" : ""}" ${current ? 'aria-current="step"' : ""}><th scope="row">${i + 1}</th><td>${current && editable ? `<input id="my-guess" aria-label="${t("guess")}, ${t("question")} ${i + 1}" inputmode="decimal" autocomplete="off" required value="${esc(guessDraft || String(room.myGuess ?? ""))}">` : fmt(r?.guess ?? (current ? room.myGuess : null) ?? "—")}</td><td>${current && readerInput ? `<input id="correct-answer" form="correct-form" aria-label="${t("answer")}" inputmode="decimal" required value="${esc(correctDraft)}">` : fmt(r?.answer ?? "—")}</td><td>${fmt(r?.points ?? "—")}</td></tr>`;
+    },
+  ).join(
+    "",
+  )}</tbody><tfoot><tr><th colspan="3">${t("sum")}</th><td aria-live="polite">${fmt(room.myTotal)}</td></tr></tfoot></table>`;
 }
+
 function rankings() {
   let rank = 0,
     last = null;
-  return room.ranking
+  return `<ol class="compact-ranking">${room.ranking
     .map((p, i) => {
       if (last !== p.total) rank = i + 1;
       last = p.total;
-      return `<details class="ranking-row"><summary><span>${rank}</span><strong>${esc(p.name)}${p.active ? "" : ` · ${t("removed")}`}</strong><b>${fmt(p.total)}</b></summary><table><thead><tr><th>${t("card")}</th><th>${t("question")}</th><th>${t("points")}</th></tr></thead><tbody>${p.points.map((v, q) => `<tr><td>${Math.floor(q / 7) + 1}</td><td>${(q % 7) + 1}</td><td>${fmt(v ?? "—")}</td></tr>`).join("")}</tbody></table></details>`;
+      return `<li><span>${rank}</span><strong>${esc(p.name)}${p.active ? "" : ` · ${t("removed")}`}</strong><b>${fmt(p.total)}</b></li>`;
     })
-    .join("");
+    .join("")}</ol>`;
+}
+function archive() {
+  if (!room.ranking?.length) return "";
+  const count = Math.ceil(room.ranking[0].scores.length / 7);
+  return `<details class="scorecard-archive"><summary>${t("archive")}</summary>${Array.from(
+    { length: count },
+    (_, card) =>
+      `<details><summary>${t("cardLabel")} ${card + 1}</summary>${room.ranking
+        .map(
+          (p) =>
+            `<section><h3>${esc(p.name)}</h3><table><thead><tr><th>№</th><th>${t("guess")}</th><th>${t("answer")}</th><th>${t("points")}</th></tr></thead><tbody>${p.scores
+              .slice(card * 7, card * 7 + 7)
+              .map(
+                (r, i) =>
+                  `<tr><th>${i + 1}</th><td>${fmt(r.guess ?? "—")}</td><td>${fmt(r.answer)}</td><td>${fmt(r.points ?? "—")}</td></tr>`,
+              )
+              .join(
+                "",
+              )}</tbody><tfoot><tr><th colspan="3">${t("cardTotal")}</th><td>${fmt(decimalSum(p.scores.slice(card * 7, card * 7 + 7).map((r) => r.points ?? 0)))}</td></tr></tfoot></table></section>`,
+        )
+        .join("")}</details>`,
+  ).join("")}</details>`;
 }
 
 function scoreHistory() {
-  return room.stage !== "lobby" && room.stage !== "finished"
-    ? `<details class="paper online-history"><summary>${t("players")}</summary>${playerList()}</details>${room.meId === room.hostId ? `<button id="finish" class="text-button">${t("finish")}</button>` : ""}`
-    : "";
+  return archive();
 }
 
 function render() {
@@ -533,15 +613,32 @@ function render() {
     return;
   }
   const active = document.activeElement?.id;
+  const manageOpen = $("#manage-game")?.open || false;
+  const openArchives = [
+    ...document.querySelectorAll(
+      ".scorecard-archive details, .scorecard-archive",
+    ),
+  ].map((d) => d.open);
   $("#app").innerHTML =
     gameTop() +
     `<div class="online-layout">${room.stage === "lobby" ? lobby() : ["question", "locked"].includes(room.stage) ? question() : results()}${scoreHistory()}</div>`;
   bind();
+  if ($("#manage-game")) $("#manage-game").open = manageOpen;
+  document
+    .querySelectorAll(".scorecard-archive details, .scorecard-archive")
+    .forEach((d, i) => (d.open = openArchives[i] || false));
   if (active && $(`#${active}`)) $(`#${active}`).focus();
 }
 function bind() {
   $("#leave").onclick = () =>
     confirmAction(t("leaveConfirm"), () => command("leave"));
+  if ($("#card-count"))
+    $("#card-count").onchange = (e) => (cardsDraft = e.target.value);
+  if ($("#cards-form"))
+    $("#cards-form").onsubmit = (e) => {
+      e.preventDefault();
+      command("cards", { cards: Number($("#card-count").value) });
+    };
   if ($("#start")) $("#start").onclick = () => command("start");
   if ($("#lock"))
     $("#lock").onclick = () => command("lock", { round: room.round });
@@ -557,7 +654,7 @@ function bind() {
             command("remove", { playerId: b.dataset.remove }),
           )),
     );
-  if ($("#guess-form")) {
+  if ($("#guess-form") && $("#my-guess")) {
     $("#my-guess").oninput = (e) => {
       guessDraft = e.target.value;
       notice = "";
@@ -648,7 +745,10 @@ async function command(action, payload = {}) {
       saveSession();
       stopCelebration();
       loadRooms();
-    } else accept(response, requestGeneration);
+    } else {
+      if (action === "cards") cardsDraft = "";
+      accept(response, requestGeneration);
+    }
   } catch (e) {
     notice = e.message;
   } finally {

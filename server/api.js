@@ -19,6 +19,7 @@ const allowed = new Set([
   "leave",
   "finish",
   "list",
+  "cards",
 ]);
 export const cors = {
   "Access-Control-Allow-Origin": "https://antonj997.github.io",
