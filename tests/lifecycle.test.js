@@ -106,3 +106,36 @@ test("REST store enforces five hours at writes and all reads", async () => {
     assert.match(c.url, /created_at=gt/);
   }
 });
+test("simultaneous edit and lock cannot leave a locked round missing an answer", async () => {
+  for (const reverse of [false, true]) {
+    const api = handler(memory(), { clock: () => 1000 });
+    await req(api, "create", A, { name: "Anna", mode: "7" });
+    await req(api, "join", B, { name: "Bo" });
+    await req(api, "start");
+    await req(api, "guess", A, { round: 0, value: 10 });
+    await req(api, "guess", B, { round: 0, value: 20 });
+    const actions = reverse
+      ? [
+          ["lock", A],
+          ["edit", B],
+        ]
+      : [
+          ["edit", B],
+          ["lock", A],
+        ];
+    const responses = await Promise.all(
+      actions.map(([action, token]) => req(api, action, token, { round: 0 })),
+    );
+    assert.equal(responses.filter((r) => r.status === 200).length, 1);
+    const view = await req(api, "state", B);
+    if (view.stage === "locked") {
+      assert.equal(view.answered, 2);
+      assert.equal(view.myGuess, 20);
+    } else {
+      assert.equal(view.stage, "question");
+      assert.equal(view.answered, 1);
+      assert.equal(view.myGuess, null);
+      assert.equal(view.myDraft, 20);
+    }
+  }
+});

@@ -27,9 +27,16 @@ export function normalize(state) {
   const s = structuredClone(state);
   s.version = 2;
   s.advanced ??= [];
+  s.drafts ??= {};
   s.readerOrder ??= s.players.map((p) => p.id);
   s.creatorName ??= s.players[0]?.name || "";
   if (s.stage === "results" && !s.deadline) s.deadline = 0;
+  if (s.stage === "results" && !s.review)
+    s.review = {
+      round: s.round,
+      deadline: s.deadline,
+      advanced: [...s.advanced],
+    };
   return s;
 }
 export function createRoom(name, hash, mode) {
@@ -84,29 +91,42 @@ export function joinRoom(state, name, hash) {
     ],
   };
 }
-function advance(s) {
+function advance(s, now) {
   if (s.rounds.length >= s.limit) {
     s.stage = "finished";
     return;
   }
   if (s.rounds.length % 7 === 0) {
     s.stage = "card";
+    s.cardReview = { round: s.round, deadline: now + 15000, advanced: [] };
     return;
   }
   s.round = s.rounds.length;
   s.stage = "question";
   s.guesses = {};
+  s.drafts = {};
+  s.advanced = [];
+  s.deadline = null;
+}
+function startNextCard(s) {
+  s.round = s.rounds.length;
+  s.stage = "question";
+  s.guesses = {};
+  s.drafts = {};
   s.advanced = [];
   s.deadline = null;
 }
 export function tick(state, now = Date.now()) {
   const s = normalize(state);
-  if (
-    s.stage === "results" &&
-    (now >= s.deadline ||
-      activePlayers(s).every((p) => s.advanced.includes(p.id)))
-  )
-    advance(s);
+  if (s.review && now >= s.review.deadline) {
+    const deadline = s.review.deadline;
+    s.review = null;
+    if (s.stage === "results") advance(s, deadline);
+  }
+  if (s.cardReview && now >= s.cardReview.deadline) {
+    s.cardReview = null;
+    if (s.stage === "card") startNextCard(s);
+  }
   return s;
 }
 export function transition(
@@ -126,6 +146,7 @@ export function transition(
     if (!target) fail("SESSION_INVALID");
     target.active = false;
     delete s.guesses[id];
+    delete s.drafts[id];
     const remaining = activePlayers(s);
     if (!remaining.length) {
       s.stage = "closed";
@@ -137,7 +158,10 @@ export function transition(
     if (me.id !== s.hostId) fail("HOST_ONLY");
     s.stage = "finished";
     s.endedEarly = true;
+    s.review = null;
+    s.cardReview = null;
     s.guesses = {};
+    s.drafts = {};
     return s;
   }
   if (action === "cards") {
@@ -154,8 +178,11 @@ export function transition(
     s.mode = `cards:${cards}`;
     if (s.stage !== "lobby") {
       s.limit = cards * 7;
-      if (s.stage === "card" && s.rounds.length >= s.limit)
+      if (s.stage === "card" && s.rounds.length >= s.limit) {
         s.stage = "finished";
+        s.review = null;
+        s.cardReview = null;
+      }
     }
     return s;
   }
@@ -174,28 +201,51 @@ export function transition(
     s.stage = "question";
     return s;
   }
+  if (action === "next") {
+    // Acknowledge only this player's view, even if another player already advanced the shared question.
+    if (
+      s.review &&
+      payload.round === s.review.round &&
+      (payload.phase === "results" || (payload.phase == null && !s.review.advanced.includes(me.id)))
+    ) {
+      s.review.advanced = [...new Set([...s.review.advanced, me.id])];
+      if (s.stage === "results") advance(s, now);
+      return s;
+    }
+    if (
+      s.cardReview &&
+      payload.round === s.cardReview.round &&
+      (payload.phase === "card" || (payload.phase == null && !s.cardReview.advanced.includes(me.id)))
+    ) {
+      s.cardReview.advanced = [...new Set([...s.cardReview.advanced, me.id])];
+      if (s.stage === "card") startNextCard(s);
+      return s;
+    }
+    if (payload.phase == null && s.stage === "card" && payload.round === s.round) {
+      startNextCard(s);
+      return s;
+    }
+  }
+  if(action==='next' && payload.phase==='results' && Number.isInteger(payload.round) && payload.round>=0 && payload.round<s.rounds.length)return s;
   if (s.stage === "finished") fail("GAME_FINISHED");
   if (!Number.isInteger(payload.round) || payload.round !== s.round)
     fail("STALE_QUESTION");
-  if (action === "next") {
-    if (s.stage === "results") {
-      s.advanced = [...new Set([...s.advanced, me.id])];
-      return tick(s, now);
+  if (action === "next") fail("WAIT_FOR_RESULT");
+  if (action === "edit") {
+    if (s.stage !== "question") fail("QUESTION_CLOSED");
+    if (Object.hasOwn(s.guesses, me.id)) {
+      s.drafts[me.id] = s.guesses[me.id];
+      delete s.guesses[me.id];
     }
-    if (s.stage === "card") {
-      if (me.id !== s.hostId) fail("HOST_ONLY");
-      s.round = s.rounds.length;
-      s.stage = "question";
-      s.guesses = {};
-      s.advanced = [];
-      s.deadline = null;
-      return s;
-    }
-    fail("WAIT_FOR_RESULT");
+    return s;
   }
   if (action === "guess") {
     if (s.stage !== "question") fail("QUESTION_CLOSED");
-    s.guesses[me.id] = value(payload.value);
+    const guess = value(payload.value);
+    if (Object.hasOwn(s.guesses, me.id) && s.guesses[me.id] !== guess)
+      fail("ANSWER_LOCKED");
+    s.guesses[me.id] = guess;
+    delete s.drafts[me.id];
     return s;
   }
   if (["lock", "reveal"].includes(action)) {
@@ -217,7 +267,9 @@ export function transition(
       ),
     });
     s.stage = "results";
-    s.deadline = now + 20000;
+    s.deadline = now + 15000;
+    s.review = { round: s.round, deadline: s.deadline, advanced: [] };
+    s.cardReview = null;
     s.advanced = [];
     return s;
   }
@@ -262,7 +314,17 @@ export function snapshot(state, hash, now = Date.now()) {
     best = eligible[0]?.total;
   let stage = s.stage,
     round = s.round;
-  if (stage === "results" && s.advanced.includes(me.id)) stage = "waiting";
+  let viewDeadline = null;
+  if (s.cardReview && !s.cardReview.advanced.includes(me.id)) {
+    stage = "card";
+    round = s.cardReview.round;
+    viewDeadline = s.cardReview.deadline;
+  }
+  if (s.review && !s.review.advanced.includes(me.id)) {
+    stage = "results";
+    round = s.review.round;
+    viewDeadline = s.review.deadline;
+  }
   const answered = list.filter((p) => Object.hasOwn(s.guesses, p.id)).length;
   return {
     version: 2,
@@ -274,14 +336,18 @@ export function snapshot(state, hash, now = Date.now()) {
     cardCount: s.limit ? s.limit / 7 : null,
     meId: me.id,
     hostId: s.hostId,
-    readerId: reader(s),
+    readerId: reader({ ...s, round }),
     creatorName: s.creatorName,
     players: list.map((p) => ({
       id: p.id,
       name: p.name,
       answered: Object.hasOwn(s.guesses, p.id),
     })),
-    myGuess: s.guesses[me.id] ?? null,
+    myGuess:
+      stage === "results"
+        ? (mine[round]?.guess ?? null)
+        : (s.guesses[me.id] ?? null),
+    myDraft: s.drafts[me.id] ?? null,
     answered,
     allAnswered: answered === list.length,
     myRounds: mine,
@@ -291,7 +357,7 @@ export function snapshot(state, hash, now = Date.now()) {
       ? s.players.map((p) => ranking.find((r) => r.id === p.id).total)
       : [],
     ranking: visibleCount ? ranking : [],
-    deadline: s.deadline,
+    deadline: viewDeadline,
     serverNow: now,
     winnerIds:
       finished && s.rounds.length

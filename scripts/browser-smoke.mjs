@@ -77,8 +77,20 @@ await click("#start");
 await wait("!!document.querySelector('#guess-form')");
 await input("#my-guess", "42");
 await evaluate("document.querySelector('#guess-form').requestSubmit()");
+await wait("!!document.querySelector('#edit-answer')");
+assert.equal(
+  await evaluate("document.querySelector('#my-guess').readOnly"),
+  true,
+);
+await api("guess", B, { round: 0, value: 30 });
+await wait("!document.querySelector('#lock').disabled");
+await click("#edit-answer");
 await wait(
-  "document.querySelector('#guess-form button').textContent.includes('Spara')",
+  "!document.querySelector('#my-guess').readOnly && document.querySelector('#lock').disabled",
+);
+assert.equal(
+  (await api("state", B)).players.find((p) => p.name === "Anton").answered,
+  false,
 );
 await input("#my-guess", "43");
 await evaluate("document.querySelector('#guess-form').requestSubmit()");
@@ -87,7 +99,13 @@ await wait("!document.querySelector('#lock').disabled");
 const shot = async (name) => {
   const metrics = await call("Page.getLayoutMetrics");
   const r = await call("Page.captureScreenshot", {
-    clip: {x:0,y:0,width:metrics.cssContentSize.width,height:metrics.cssContentSize.height,scale:1},
+    clip: {
+      x: 0,
+      y: 0,
+      width: metrics.cssContentSize.width,
+      height: metrics.cssContentSize.height,
+      scale: 1,
+    },
     format: "png",
     captureBeyondViewport: true,
   });
@@ -125,7 +143,14 @@ assert.equal(
 );
 await shot("private-result");
 await click("#next-question");
-await wait("document.body.innerText.includes('Väntar på de andra')");
+await wait(
+  "!!document.querySelector('#my-guess') && !document.querySelector('#my-guess').readOnly",
+);
+assert.equal((await api("state", B)).stage, "results");
+await input("#my-guess", "41");
+await evaluate("document.querySelector('#guess-form').requestSubmit()");
+await wait("!!document.querySelector('#edit-answer')");
+assert.equal((await api("state")).myGuess, 41);
 await api("next", B, { round: 0 });
 await wait("!!document.querySelector('#guess-form')");
 for (let q = 1; q < 7; q++) {

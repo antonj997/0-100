@@ -12,6 +12,7 @@ const allowed = new Set([
   "state",
   "start",
   "guess",
+  "edit",
   "reveal",
   "next",
   "remove",

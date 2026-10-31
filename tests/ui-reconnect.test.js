@@ -98,3 +98,16 @@ test("management preserves configured lobby card count", () => {
   assert.match(v.run("management()"), /<option value="3" selected>/);
   assert.doesNotMatch(v.run("management()"), /3 Ett kort per spelare/);
 });
+test("submitted answer is readonly with an edit action and named readiness for everyone", () => {
+  const v = ui();
+  v.run(
+    `room={stage:'question',round:0,card:1,players:[{id:'a',name:'Anna',answered:true},{id:'b',name:'Bo',answered:false}],meId:'a',readerId:'a',hostId:'a',myGuess:42,myTotal:0,myRounds:[],answered:1};`,
+  );
+  assert.match(v.run("ownSheet()"), /readonly/);
+  const html = v.run("question()");
+  assert.match(html, /id="edit-answer"/);
+  assert.match(html, /Svar inskickat/);
+  assert.match(html, /Anna/);
+  assert.match(html, /Bo/);
+  assert.match(html, /redo/);
+});

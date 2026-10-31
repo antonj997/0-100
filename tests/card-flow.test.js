@@ -25,6 +25,7 @@ function score(s, q = 0) {
 test("answers editable until reader locks, only reader can lock/reveal", () => {
   let s = start();
   s = transition(s, A, "guess", { round: 0, value: 10 });
+  s = transition(s, A, "edit", { round: 0 });
   s = transition(s, A, "guess", { round: 0, value: 11 });
   assert.equal(snapshot(s, A).myGuess, 11);
   assert.throws(() => transition(s, B, "lock", { round: 0 }), /READER_ONLY/);
@@ -52,10 +53,11 @@ test("private result, independent advance and server deadline", () => {
   assert.equal(v.rounds.length, 0);
   assert.deepEqual(v.totals, []);
   s = transition(s, B, "next", { round: 0 }, 1002);
-  assert.equal(snapshot(s, B, 1003).stage, "waiting");
+  assert.equal(snapshot(s, B, 1003).stage, "question");
+  assert.equal(snapshot(s, B, 1003).round, 1);
   assert.equal(snapshot(s, A, 1003).stage, "results");
-  assert.equal(snapshot(s, A, 21000).stage, "question");
-  assert.equal(snapshot(s, A, 21000).round, 1);
+  assert.equal(snapshot(s, A, 16000).stage, "question");
+  assert.equal(snapshot(s, A, 16000).round, 1);
 });
 test("host leave transfers ownership; kick invalidates access and preserves history", () => {
   let s = score(start());
@@ -143,3 +145,90 @@ test("published player scorecards contain guesses, correct answers and points on
     points: 10,
   });
 });
+test("editing withdraws readiness until resubmit, preserves private draft and prevents reader locking", () => {
+  let s = start();
+  for (const token of [A, B, C])
+    s = transition(s, token, "guess", { round: 0, value: 42 }, 1000);
+  assert.equal(snapshot(s, A, 1000).allAnswered, true);
+  s = transition(s, B, "edit", { round: 0 }, 1001);
+  const own = snapshot(s, B, 1001),
+    other = snapshot(s, A, 1001);
+  assert.equal(own.myGuess, null);
+  assert.equal(own.myDraft, 42);
+  assert.equal(other.answered, 2);
+  assert.equal(
+    other.players.find((p) => p.id === s.players[1].id).answered,
+    false,
+  );
+  assert.equal(other.myDraft, null);
+  assert.throws(
+    () => transition(s, A, "lock", { round: 0 }, 1002),
+    /WAIT_FOR_PLAYERS/,
+  );
+  s = transition(s, B, "guess", { round: 0, value: 43 }, 1003);
+  assert.equal(snapshot(s, B, 1003).myGuess, 43);
+  assert.equal(snapshot(s, B, 1003).myDraft, null);
+  s = transition(s, A, "lock", { round: 0 }, 1004);
+  assert.throws(
+    () => transition(s, B, "edit", { round: 0 }, 1005),
+    /QUESTION_CLOSED/,
+  );
+});
+test("submitted guesses require edit before changing and edit is idempotent", () => {
+  let s = start();
+  s = transition(s, A, "guess", { round: 0, value: 42 }, 1000);
+  assert.throws(
+    () => transition(s, A, "guess", { round: 0, value: 43 }, 1001),
+    /ANSWER_LOCKED/,
+  );
+  s = transition(s, A, "edit", { round: 0 }, 1002);
+  s = transition(s, A, "edit", { round: 0 }, 1003);
+  assert.equal(snapshot(s, A, 1003).myDraft, 42);
+  assert.throws(
+    () => transition(s, A, "edit", { round: 1 }, 1004),
+    /STALE_QUESTION/,
+  );
+});
+test("early player can answer next question while peers retain their result until 15 seconds", () => {
+  let s = score(start());
+  s = transition(s, B, "next", { round: 0, phase: "results" }, 1001);
+  s = transition(s, B, "guess", { round: 1, value: 76 }, 1002);
+  assert.equal(snapshot(s, B, 1003).myGuess, 76);
+  assert.equal(snapshot(s, A, 15999).stage, "results");
+  assert.equal(snapshot(s, A, 15999).round, 0);
+  assert.equal(snapshot(s, A, 16000).round, 1);
+  assert.equal(snapshot(s, A, 16000).stage, "question");
+  assert.equal(snapshot(s, A, 16000).myGuess, null);
+  s = transition(s, A, "next", { round: 0, phase: "results" }, 1004);
+  assert.equal(snapshot(s, A, 1005).round, 1);
+  assert.equal(snapshot(s, B, 1005).myGuess, 76);
+});
+test("automatic advance at 15 seconds does not require any next clicks", () => {
+  const s = score(start());
+  assert.equal(snapshot(s, A, 15999).stage, "results");
+  assert.equal(snapshot(s, A, 16000).stage, "question");
+});
+test("card summaries are independent and shortening to a completed card cannot restart a finished game", () => {
+  let s = start();
+  for (let q = 0; q < 7; q++) {
+    const now = q * 30000;
+    for (const t of [A, B, C])
+      s = transition(s, t, "guess", { round: q, value: 10 }, now);
+    s = transition(s, A, "lock", { round: q }, now);
+    s = transition(s, A, "reveal", { round: q, value: 10 }, now);
+    for (const t of [A, B, C])
+      s = transition(s, t, "next", { round: q, phase: "results" }, now + 1);
+  }
+  assert.equal(snapshot(s, B, 180002).stage, "card");
+  const shortened = transition(s, A, "cards", { cards: 1 }, 180002);
+  assert.equal(snapshot(shortened, B, 180003).stage, "finished");
+  assert.throws(
+    () => transition(shortened, B, "next", { round: 6, phase: "card" }, 180004),
+    /GAME_FINISHED/,
+  );
+  s = transition(s, B, "next", { round: 6, phase: "card" }, 180002);
+  assert.equal(snapshot(s, B, 180003).round, 7);
+  assert.equal(snapshot(s, A, 180003).stage, "card");
+  assert.equal(snapshot(s, A, 195001).stage, "question");
+});
+test('delayed result acknowledgement cannot skip the card summary at its deadline',()=>{let s=start();for(let q=0;q<7;q++){const now=q*30000;for(const t of [A,B,C])s=transition(s,t,'guess',{round:q,value:10},now);s=transition(s,A,'lock',{round:q},now);s=transition(s,A,'reveal',{round:q,value:10},now);if(q<6)for(const t of [A,B,C])s=transition(s,t,'next',{round:q,phase:'results'},now+1);}s=transition(s,B,'next',{round:6,phase:'results'},195001);assert.equal(snapshot(s,B,195001).stage,'card');assert.equal(snapshot(s,B,195001).round,6);s=transition(s,B,'next',{round:6,phase:'card'},195002);assert.equal(snapshot(s,B,195002).stage,'question');assert.equal(snapshot(s,B,195002).round,7);});

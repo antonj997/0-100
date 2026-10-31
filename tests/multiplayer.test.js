@@ -57,7 +57,7 @@ test("invalid inputs, stranger access and peer guesses remain protected", () => 
       /INVALID_NUMBER/,
     );
   s = transition(s, B, "guess", { round: 0, value: 83 });
-  const v = snapshot(s, A);
+  const v = snapshot(s, A, 1000);
   assert.equal(v.myGuess, null);
   assert.equal(v.players[1].answered, true);
   assert.ok(!JSON.stringify(v).includes("83"));
