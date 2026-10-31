@@ -31,3 +31,12 @@ The playing surface is a seven-row scorecard. The current question is highlighte
 Manage game contains member removal, total card count, early finish, sharing and leave. Only the host can change card count (1–10, never below the started card); completed history is preserved. Finishing the already completed final card after shortening the game is allowed.
 
 Validation after this update: 46 automated tests plus Chromium mobile/desktop flow including in-game card-count editing and a full seven-question card. Review caught and fixed lobby card-count display. CI now runs on pull requests/manual dispatch only, with independent Node 22/24 results and cancellation of superseded runs. Uploads use one atomic tree/commit/ref update, avoiding the earlier intermediate incomplete commits that generated failure emails.
+
+## Explicit submission and independent progression (follow-up)
+Submitted answers are readonly. Edit withdraws readiness on the server, preserves only that player's private draft, and requires resubmission. A compact named status strip shows every active player's ready/not-ready state. Concurrent edit and reader-lock requests use the existing revision guard: the winner is applied and the losing action is rejected safely.
+
+This follow-up supersedes the earlier shared waiting screen and 20-second timing. Each player can move straight from their own result to the next question and submit immediately. Other players keep their previous result until they continue or 15 seconds elapse. Card summaries are also independently dismissible, with a 15-second automatic transition. The server retains per-player acknowledgements so one player's Next cannot skip another player's screen or erase an already submitted next-round guess.
+
+Validation: 54 automated tests; Chromium verifies readonly submission, edit/readiness withdrawal, resubmission, direct next-question submission while a peer still sees results, and full-card completion. This follow-up requires a coordinated frontend/backend release after its PR is approved.
+
+Independent review caught a delayed Next request crossing the result-to-card deadline. Phase-specific acknowledgement now prevents it from skipping the summary; a failing regression test reproduces and verifies the fix.
